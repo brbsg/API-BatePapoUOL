@@ -1,6 +1,6 @@
 import express, { json } from "express";
 import cors from "cors";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 
 import dotenv from "dotenv";
 
@@ -31,6 +31,7 @@ server.use(cors());
 
 const mongoClient = new MongoClient("mongodb://localhost:27017");
 let db;
+
 mongoClient.connect().then(() => {
   db = mongoClient.db("bate-papo-uol");
 });
@@ -84,9 +85,9 @@ server.get("/participants", async (req, res) => {
       .collection("participants")
       .find({})
       .toArray();
-
-    res.send(200).send(allParticipants);
-  } catch {
+    res.status(200).send(allParticipants);
+  } catch (error) {
+    console.log(error);
     res.sendStatus(500);
   }
 });
@@ -142,16 +143,6 @@ server.get("/messages", async (req, res) => {
   const { user } = req.headers;
   const { limit } = req.query;
 
-  function isValidMessage(message) {
-    if (
-      message.type === "message" ||
-      message.from === user ||
-      message.to === user
-    ) {
-      return true;
-    }
-  }
-
   try {
     const messages = await db.collection("messages").find({}).toArray();
 
@@ -169,7 +160,8 @@ server.get("/messages", async (req, res) => {
         0,
         parseInt(limit)
       );
-      res.status(200).send(sendLimitedMessages);
+
+      return res.status(200).send(sendLimitedMessages);
     }
 
     res.status(200).send(allowedMessages);
@@ -208,8 +200,25 @@ server.post("/status", async (req, res) => {
 
 //================================================
 
-async function checkInactiveUsers() {}
+async function checkInactiveUsers() {
+  const participants = await db.collection("participants").find({}).toArray();
+  const time = dayjs().locale("pt-br").format("HH:mm:ss");
+  participants.forEach(async (participant) => {
+    if (Date.now() - participant.lastStatus > 10000) {
+      await db.collection("messages").insertOne({
+        from: participant.name,
+        to: "Todos",
+        text: "sai da sala...",
+        type: "status",
+        time,
+      });
+      await db.collection("participants").deleteOne({
+        _id: new ObjectId(participant._id),
+      });
+    }
+  });
+}
 
-setInterval(checkInactiveUsers, 15000);
+setInterval(checkInactiveUsers, 1000);
 
 server.listen(5000);
