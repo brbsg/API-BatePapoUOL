@@ -95,6 +95,8 @@ server.get("/participants", async (req, res) => {
 //================================================
 
 server.post("/messages", async (req, res) => {
+  console.log(req.body);
+
   const validation = messageSchema.validate(req.body);
 
   if (validation.error) {
