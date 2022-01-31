@@ -178,24 +178,20 @@ server.post("/status", async (req, res) => {
   const { user } = req.headers;
 
   try {
-    try {
-      const validParticipant = await db
-        .collection("participants")
-        .findOne({ name: user });
+    const validParticipant = await db
+      .collection("participants")
+      .findOne({ name: user });
 
-      if (!validParticipant || !user) {
-        return res.sendStatus(404);
-      }
-
-      await db
-        .collection("participants")
-        .updateOne({ name: user }, { $set: { lastStatus: Date.now() } });
-      res.sendStatus(200);
-    } catch (error) {
-      console.error(error);
-      res.sendStatus(500);
+    if (!validParticipant || !user) {
+      return res.sendStatus(404);
     }
-  } catch {
+
+    await db
+      .collection("participants")
+      .updateOne({ name: user }, { $set: { lastStatus: Date.now() } });
+    res.sendStatus(200);
+  } catch (error) {
+    console.error(error);
     res.sendStatus(500);
   }
 });
