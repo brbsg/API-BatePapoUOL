@@ -95,8 +95,6 @@ server.get("/participants", async (req, res) => {
 //================================================
 
 server.post("/messages", async (req, res) => {
-  console.log(req.body);
-
   const validation = messageSchema.validate(req.body);
 
   if (validation.error) {
@@ -109,9 +107,11 @@ server.post("/messages", async (req, res) => {
   const { to, text, type } = req.body;
 
   try {
-    const registered = await db.collection("participants").findOne({ name });
+    const registered = await db
+      .collection("participants")
+      .findOne({ name: user });
 
-    if (!participantRegistered) {
+    if (!registered) {
       return res.status(422).send("Usuário " + user + " não cadastrado.");
     }
 
@@ -205,6 +205,7 @@ server.post("/status", async (req, res) => {
 async function checkInactiveUsers() {
   const participants = await db.collection("participants").find({}).toArray();
   const time = dayjs().locale("pt-br").format("HH:mm:ss");
+
   participants.forEach(async (participant) => {
     if (Date.now() - participant.lastStatus > 10000) {
       await db.collection("messages").insertOne({
@@ -214,6 +215,7 @@ async function checkInactiveUsers() {
         type: "status",
         time,
       });
+
       await db.collection("participants").deleteOne({
         _id: new ObjectId(participant._id),
       });
@@ -221,6 +223,6 @@ async function checkInactiveUsers() {
   });
 }
 
-setInterval(checkInactiveUsers, 1000);
+setInterval(checkInactiveUsers, 15000);
 
 server.listen(5000);
